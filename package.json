@@ -1,9 +1,21 @@
 {
+  "name": "goodgrieflivebackend",
+  "description": "fullstack chat app focused on supporting people with grief",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [],
+  "author": "Rachel Eckenrod",
+  "license": "ISC",
   "dependencies": {
     "@babel/preset-react": "^7.23.3",
     "bcrypt": "^5.1.1",
     "bufferutil": "^4.0.8",
     "cloudinary": "^1.41.0",
+    "connect-mongo": "^5.1.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
@@ -18,7 +30,6 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.7",
-    "nodemon": "^3.0.1",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "react": "^18.2.0",
@@ -26,5 +37,8 @@
     "socket.io": "^4.7.2",
     "socket.io-cookie": "^0.0.1",
     "validator": "^13.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
   }
 }
