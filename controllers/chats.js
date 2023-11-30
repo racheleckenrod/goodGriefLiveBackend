@@ -1,33 +1,33 @@
 const { session } = require("passport");
 const Post = require("../models/Post");
-const Comment = require("../models/Comment")
+const Comment = require("../models/Comment");
+const ChatMessage = require("../models/ChatMessage");
 module.exports = {
 
   getLobby: async (req, res) => {
-    if(!req.user){
-      try {
+    try {
+      let data;
+      if (!req.user) {
         const _id = req.session._id
-
         const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
         const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
-        res.render("lobby.ejs", { posts: posts, comments: comments, userName: req.session.userName, _id: _id, room: "The Lobby", session: req.session });
-      } catch (err) {
-        console.log(err)
+        const recentMessages = await ChatMessage.find().sort({ timestamp: -1 }).limit(10).lean();
+        data = { posts: posts, comments: comments, userName: req.session.userName, _id: _id, room: "The Lobby", session: req.session, recentMessages: recentMessages };
+      } else {
+        const _id = req.user._id
+        const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
+        const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
+        const recentMessages = await ChatMessage.find().sort({ timestamp: -1 }).limit(10).lean();
+        data = { posts: posts, comments: comments,  user: req.user, userName: req.user.userName, _id: _id, room: "The Lobby", session: req.session, recentMessages: recentMessages };
       }
-    
-  } else {
-    try {
-      // console.log("OK", req.user._id)
-      const _id = req.user._id
-      const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
-      const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
+      res.json(data);
       
-      res.render("lobby.ejs", { posts: posts, comments: comments,  user: req.user, _id: req.user._id, userName: req.user.userName, _id: _id, room: "The Lobby", session: req.session } );
     } catch (err) {
-      console.log(err)
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
-  }
-},
+  },
+
 
     // getLobby: (req, res, next) => {
     //     if (req.user) {
@@ -42,6 +42,9 @@ module.exports = {
        
     //   next()
     // },
+
+
+
     getRoom: (req, res, next) => {
      
       const _id = req.user._id

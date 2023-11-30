@@ -5,6 +5,11 @@ const socketio = require("socket.io");
 const app = express();
 const server = http.createServer(app);
 const io = socketio(server, {
+  cors: {
+    origin: 'http://localhost:5173',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
   reconnection: true,
   reconnectionAttempts: 10,
   reconnectionDelay: 1000,
@@ -16,7 +21,7 @@ const cors = require('cors');
 require("dotenv").config({ path: "./config/.env" });
 const PORT = process.env.PORT;
 
-app.use(cors())
+app.use(cors({ credentials: true, origin: 'http://localhost:5173' }));
 
 // const moment = require('moment-timezone');
 const mongoose = require("mongoose");
@@ -82,6 +87,7 @@ app.use(cookieParser());
 
 // obtain consent for cookies before setting session cookie and others
 app.use((req, res, next) => {
+  console.log("app.use test at the cookie level")
   const consentCookie = req.cookies.consentCookie;
   console.log(req.path)
 
@@ -135,7 +141,7 @@ app.use(flash());
 
 // create guestUserID for guests
 app.use( async (req, res, next) => {
-
+console.log("app.use test")
   if (req.isAuthenticated()) {
     req.session.status = 'loggedIn';
   } else {
@@ -157,13 +163,14 @@ app.use( async (req, res, next) => {
 
 // Check for cookie acceptance before wrap middleware
 io.use(async (socket, next) => {
+  console.log("io.use cookie check", socket.handshake.headers, socket.id)
   // Check for cookie acceptance
   const consentCookie = socket.handshake.headers.cookie
     ? socket.handshake.headers.cookie
         .split('; ')
         .find((cookie) => cookie.startsWith('consentCookie='))
     : undefined;
-
+console.log("consentCookie=", consentCookie)
   if (!consentCookie) {
     // No cookie acceptance, reject the connection
     return next(new Error('Cookie acceptance is required.'));
@@ -186,7 +193,7 @@ io.use(expressSocketIoSession(sessionMiddleware));
 io.use(async (socket, next) => {
   const userTimeZone = socket.handshake.query.userTimeZone;
   const userLang = socket.handshake.query.userLang;
-  console.log("io.use userLang=", userLang, userTimeZone);
+  console.log("io.use userLang=", userLang, userTimeZone, socket.id);
 
   socket.request.session.userTimeZone = userTimeZone;
   socket.request.session.userLang = userLang;
@@ -275,14 +282,21 @@ function getRoomUsers(room) {
 // // Join user to chat
 // userJoin(chatusername, username, room, _id, socketID);
 function userJoin(chatusername, username, room, _id, socketID) {
-  const existingChatUser = chatUsers.find((chatUser) => chatusername === chatUser.username && chatUser.room === room);
+  console.log(chatusername, username, room, _id, socketID)
+  const existingChatUserAndSocket = chatUsers.find((chatUser) => chatusername === chatUser.username && chatUser.room === room && chatUser.socketIDs.includes(socketID));
 
+  if (existingChatUserAndSocket) {
+
+    userLeave(socketID)
+  }
+
+  const existingChatUser = chatUsers.find((chatUser) => chatUser.username === chatusername && chatUser.room === room);
   if (existingChatUser) {
-    
     existingChatUser.userCount++;
     existingChatUser.socketIDs.push(socketID);
-    return existingChatUser;
+    return existingChatUser
   }
+  
   const chatUser = { socketIDs: [socketID], username, room, _id, userCount: 1 };
   chatUsers.push(chatUser);
   return chatUser;
@@ -292,23 +306,23 @@ function userJoin(chatusername, username, room, _id, socketID) {
 // run when client connects
 io.on("connection", async ( socket) => {
 
-
+  console.log("io connection", socket.request.session)
     const userTimeZone = socket.request.session.userTimeZone;
     const userLang = socket.request.session.userLang;
     const guestID = socket.request.session.guestID;
     const userStatus = socket.request.session.status;
     socket.emit('setStatus', userStatus)
-
-    Guest.findOneAndUpdate(
-      { guestUserID: guestID },
-      { $set: { timezone: userTimeZone }},
-      { new: true },
-      (err) => {
-        if (err) {
-          console.error(err);
-        } 
+    console.log(socket.chatusername, "connected", socket.id, socket.request.session)
+   
+      try {
+        const result = await  Guest.findOneAndUpdate( 
+          { guestUserID: guestID },
+          { $set: { timezone: userTimeZone }},
+          { new: true },
+        );
+      } catch (err) {
+         console.error(err);
       }
-    );
 
     
         // Runs when client disconnects
@@ -352,6 +366,7 @@ io.on("connection", async ( socket) => {
           socket.join(chatUser.room);
 
            // Send users and room info
+
            io.to(chatUser.room).emit("roomUsers", {
             room: chatUser.room,
             chatUsers: getRoomUsers(chatUser.room),
@@ -387,43 +402,82 @@ io.on("connection", async ( socket) => {
           );
     
           // fetch recent messages for the room from the database
-          ChatMessage.find({room: chatUser.room })
-            .sort({ timestamp: -1 })
-            .limit(10)
-            .exec(async (err, messages) => {
-              if (err) {
-                console.log(err)
-              } else {
-                const formattedMessages = []; 
+          // ChatMessage.find({room: chatUser.room })
+          //   .sort({ timestamp: -1 })
+          //   .limit(10)
+          //   .exec(async (err, messages) => {
+          //     if (err) {
+          //       console.log(err)
+          //     } else {
+          //       const formattedMessages = []; 
+          //     for (const message of messages) {
+          //       try {
+          //         const user = await User.findById(message.user);
+          //         let username;
+                
+          //         if (user) {
+          //           username = user.userName;
+          //         } else {
+          //           const guestUser = await Guest.findById(message.user);
+          //           if (guestUser) {
+          //             username = guestUser.userName;
+          //           }
+          //         }
+          //           const formattedMessage = {
+          //             text: message.message,
+          //             username: username,
+          //             time: (message.timestamp),
+          //           };
+          //           formattedMessages.push(formattedMessage);
+          //         } catch (error) {
+          //           console.error("Error fetching user data", error);
+          //         }
+          //       }
+                
+          //       socket.emit("recentMessages", formattedMessages.reverse());
+
+          //     }
+          // });
+          async function fetchRecentMessages() {
+            try {
+              const messages = await ChatMessage.find({ room: chatUser.room })
+                .sort({ timestamp: -1 })
+                .limit(10)
+                .exec();
+
+              const formattedMessages = [];
+
               for (const message of messages) {
                 try {
                   const user = await User.findById(message.user);
                   let username;
-                
+
                   if (user) {
-                    username = user.userName;
+                    username = user.username;
                   } else {
                     const guestUser = await Guest.findById(message.user);
                     if (guestUser) {
-                      username = guestUser.userName;
+                      username = guestUser.username;
                     }
                   }
-                    const formattedMessage = {
-                      text: message.message,
-                      username: username,
-                      time: (message.timestamp),
-                    };
-                    formattedMessages.push(formattedMessage);
-                  } catch (error) {
-                    console.error("Error fetching user data", error);
-                  }
+                  const formattedMessage = {
+                    text: message.message,
+                    username: username,
+                    time: message.timestamp,
+                  };
+
+                  formattedMessages.push(formattedMessage);
+                } catch (error) {
+                  console.error("Error fetching user data", error);
                 }
-                
-                socket.emit("recentMessages", formattedMessages.reverse());
-
               }
-          });
+              socket.emit("recentMessages", formattedMessages.reverse());
+            } catch (error) {
+              console.error("Error fetching recentMessages", error);
+            }
+          };
 
+          fetchRecentMessages();
 
           // Listen for chatMessage
 
@@ -458,11 +512,10 @@ io.on("connection", async ( socket) => {
 
 //Setup Routes For Which The Server Is Listening
 
-app.use("/", mainRoutes);
-// app.use("/consent", consentRoutes);
-app.use("/post", postRoutes);
-app.use("/comment", commentRoutes);
-app.use("/chat/:room", chatRoutes);
+app.use("/api", mainRoutes);
+app.use("/api/post", postRoutes);
+app.use("/api/comment", commentRoutes);
+app.use("/api/chat/:room", chatRoutes);
 
 app.use("/chat", chatRoutes);
 
