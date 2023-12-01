@@ -92,12 +92,15 @@ app.use((req, res, next) => {
   console.log(req.path)
 
   if (req.path === '/privacyPolicy') {
-    return res.render("privacyPolicy");
+    // return res.render("privacyPolicy");
+    console.log("privacy policy")
+    return next();
   }
 
   if (!consentCookie) {
     console.log("no consentCookie");
-    return res.render("index");
+    res.set('X-Redirect', '/');
+    return res.status(401).json({ error: 'You must accept cookies.'});
   } 
   
   next();
@@ -283,20 +286,14 @@ function getRoomUsers(room) {
 // userJoin(chatusername, username, room, _id, socketID);
 function userJoin(chatusername, username, room, _id, socketID) {
   console.log(chatusername, username, room, _id, socketID)
-  const existingChatUserAndSocket = chatUsers.find((chatUser) => chatusername === chatUser.username && chatUser.room === room && chatUser.socketIDs.includes(socketID));
+  const existingChatUser = chatUsers.find((chatUser) => chatusername === chatUser.username && chatUser.room === room);
 
-  if (existingChatUserAndSocket) {
-
-    userLeave(socketID)
-  }
-
-  const existingChatUser = chatUsers.find((chatUser) => chatUser.username === chatusername && chatUser.room === room);
   if (existingChatUser) {
+    
     existingChatUser.userCount++;
     existingChatUser.socketIDs.push(socketID);
-    return existingChatUser
+    return existingChatUser;
   }
-  
   const chatUser = { socketIDs: [socketID], username, room, _id, userCount: 1 };
   chatUsers.push(chatUser);
   return chatUser;
@@ -453,11 +450,11 @@ io.on("connection", async ( socket) => {
                   let username;
 
                   if (user) {
-                    username = user.username;
+                    username = user.userName;
                   } else {
                     const guestUser = await Guest.findById(message.user);
                     if (guestUser) {
-                      username = guestUser.username;
+                      username = guestUser.userName;
                     }
                   }
                   const formattedMessage = {

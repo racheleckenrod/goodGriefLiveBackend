@@ -35,16 +35,26 @@ const sendEmailNotification = async (feedback, recipients) => {
 module.exports = {
     getIndex: async (req, res) => {
       try {
-        console.log("OK", req.user ? req.user : "no req.user")
-        const user = req.user
-        const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
-        const comments = await Comment.find().sort({ createdAt: "asc" }).lean();
+        let data;
+        if (!req.user) {
+          const _id = req.session._id
+          const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
+          const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
+          data = { posts: posts, comments: comments, userName: req.session.userName, _id: _id, session: req.session };
+        } else {
+          const _id = req.user._id
+          const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
+          const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
+          data = { posts: posts, comments: comments,  user: req.user, userName: req.user.userName, _id: _id, session: req.session };
+        }
+        res.json(data);
         
-        res.render("index.ejs", { posts: posts, comments: comments,  user: user, _id: req.user ? req.user._id : null} );
       } catch (err) {
-        console.log(err)
+        console.error(err);
+        res.status(500).json({ error: 'Internal Server Error' });
       }
     },
+  
     getWelcome: async (req, res) => {
       try{
         const posts = await Post.find({ user: req.user.id }).populate('user');
