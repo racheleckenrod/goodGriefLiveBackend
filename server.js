@@ -222,7 +222,8 @@ io.use(async (socket, next) => {
     // generate new guestID
     const newGuestUser = await generateGuestID(socket.request.session.timeZone, socket.request.session.userLang);
     socket.request.session.guestUser = newGuestUser
-    socket.request.session.guestID = newGuestUser.guestID
+    socket.request.session.guestID = newGuestUser.guestID;
+
     // socket.data = { guestUser: newGuestUser };
     
     // emit new guestID to client to set a cookie
@@ -232,8 +233,12 @@ io.use(async (socket, next) => {
 
   if (socket.request.user) {
     socket.chatusername = socket.request.user.userName;
+    socket.request.session.status = 'loggedIn';
+
   } else {
     socket.chatusername = socket.request.session.guestUser.userName;
+    socket.request.session.status = 'guest';
+
   }
   // console.log("socket.chatuser=", socket.chatusername)
 
@@ -398,43 +403,6 @@ io.on("connection", async ( socket) => {
             "message",  formatMessage(botName,`${chatUser.username} has joined the chat`)
           );
     
-          // fetch recent messages for the room from the database
-          // ChatMessage.find({room: chatUser.room })
-          //   .sort({ timestamp: -1 })
-          //   .limit(10)
-          //   .exec(async (err, messages) => {
-          //     if (err) {
-          //       console.log(err)
-          //     } else {
-          //       const formattedMessages = []; 
-          //     for (const message of messages) {
-          //       try {
-          //         const user = await User.findById(message.user);
-          //         let username;
-                
-          //         if (user) {
-          //           username = user.userName;
-          //         } else {
-          //           const guestUser = await Guest.findById(message.user);
-          //           if (guestUser) {
-          //             username = guestUser.userName;
-          //           }
-          //         }
-          //           const formattedMessage = {
-          //             text: message.message,
-          //             username: username,
-          //             time: (message.timestamp),
-          //           };
-          //           formattedMessages.push(formattedMessage);
-          //         } catch (error) {
-          //           console.error("Error fetching user data", error);
-          //         }
-          //       }
-                
-          //       socket.emit("recentMessages", formattedMessages.reverse());
-
-          //     }
-          // });
           async function fetchRecentMessages() {
             try {
               const messages = await ChatMessage.find({ room: chatUser.room })
