@@ -89,7 +89,7 @@ app.use(cookieParser());
 app.use((req, res, next) => {
   console.log("app.use test at the cookie level")
   const consentCookie = req.cookies.consentCookie;
-  console.log(req.path)
+  // console.log(req.path)
 
   if (req.path === '/privacyPolicy') {
     // return res.render("privacyPolicy");
@@ -99,7 +99,7 @@ app.use((req, res, next) => {
 
   if (!consentCookie) {
     console.log("no consentCookie");
-    res.set('X-Redirect', '/');
+    // res.redirect('X-Redirect', '/');
     return res.status(401).json({ error: 'You must accept cookies.'});
   } 
   
@@ -144,7 +144,7 @@ app.use(flash());
 
 // create guestUserID for guests
 app.use( async (req, res, next) => {
-console.log("app.use test")
+// console.log("app.use test")
   if (req.isAuthenticated()) {
     req.session.status = 'loggedIn';
   } else {
@@ -166,14 +166,14 @@ console.log("app.use test")
 
 // Check for cookie acceptance before wrap middleware
 io.use(async (socket, next) => {
-  console.log("io.use cookie check", socket.handshake.headers, socket.id)
+  // console.log("io.use cookie check", socket.handshake.headers, socket.id)
   // Check for cookie acceptance
   const consentCookie = socket.handshake.headers.cookie
     ? socket.handshake.headers.cookie
         .split('; ')
         .find((cookie) => cookie.startsWith('consentCookie='))
     : undefined;
-console.log("consentCookie=", consentCookie)
+console.log("io consentCookie=", consentCookie)
   if (!consentCookie) {
     // No cookie acceptance, reject the connection
     return next(new Error('Cookie acceptance is required.'));
@@ -196,7 +196,7 @@ io.use(expressSocketIoSession(sessionMiddleware));
 io.use(async (socket, next) => {
   const userTimeZone = socket.handshake.query.userTimeZone;
   const userLang = socket.handshake.query.userLang;
-  console.log("io.use userLang=", userLang, userTimeZone, socket.id);
+  // console.log("io.use userLang=", userLang, userTimeZone, socket.id);
 
   socket.request.session.userTimeZone = userTimeZone;
   socket.request.session.userLang = userLang;
@@ -210,7 +210,7 @@ io.use(async (socket, next) => {
   if (guestIDCookie) {
     const guestID = guestIDCookie.split('=')[1];
     socket.request.session.guestID = guestID;
-    console.log("if guestIDCookie socket.request.session.guestID=", socket.request.session.guestID)
+    console.log("if guestIDCookie =", socket.request.session.guestID)
     
     const guestUser = await Guest.findOne({ guestUserID: guestID });
 
@@ -227,7 +227,7 @@ io.use(async (socket, next) => {
     
     // emit new guestID to client to set a cookie
     socket.emit('setCookie', newGuestUser.guestID);
-    console.log("emitted cookie?", newGuestUser.guestID)
+    console.log("emitted cookie? newGuestUser=", newGuestUser.guestID)
   }
 
   if (socket.request.user) {
@@ -235,7 +235,7 @@ io.use(async (socket, next) => {
   } else {
     socket.chatusername = socket.request.session.guestUser.userName;
   }
-  console.log("socket.chatuser=", socket.chatusername)
+  // console.log("socket.chatuser=", socket.chatusername)
 
   const session = socket.request.session;
   session.save();
@@ -285,7 +285,7 @@ function getRoomUsers(room) {
 // // Join user to chat
 // userJoin(chatusername, username, room, _id, socketID);
 function userJoin(chatusername, username, room, _id, socketID) {
-  console.log(chatusername, username, room, _id, socketID)
+  console.log("IN USER JOIN", chatusername, username, room, _id, socketID)
   const existingChatUser = chatUsers.find((chatUser) => chatusername === chatUser.username && chatUser.room === room);
 
   if (existingChatUser) {
@@ -303,13 +303,13 @@ function userJoin(chatusername, username, room, _id, socketID) {
 // run when client connects
 io.on("connection", async ( socket) => {
 
-  console.log("io connection", socket.request.session)
+  console.log("io connection", socket.id, socket.request.session.status)
     const userTimeZone = socket.request.session.userTimeZone;
     const userLang = socket.request.session.userLang;
     const guestID = socket.request.session.guestID;
     const userStatus = socket.request.session.status;
-    socket.emit('setStatus', userStatus)
-    console.log(socket.chatusername, "connected", socket.id, socket.request.session)
+    socket.emit('setStatus', socket.request.session.status)
+  console.log(socket.chatusername, "connected setStatus sent?", socket.request.session.status, socket.id)
    
       try {
         const result = await  Guest.findOneAndUpdate( 
@@ -324,7 +324,7 @@ io.on("connection", async ( socket) => {
     
         // Runs when client disconnects
         socket.on("disconnect", (reason) => {
-          console.log("fix disconnect")
+          console.log("fix disconnect", socket.id)
           const chatUser = userLeave(socket.id);
         
               if(chatUser) {
@@ -357,7 +357,7 @@ io.on("connection", async ( socket) => {
         });
       
         socket.on("joinRoom", ({ username, room, _id}) => {
-
+          console.log("joining room??", username, room, _id)
           const chatUser = userJoin(socket.chatusername, username, room, _id, socket.id);
           console.log(`${socket.chatusername} joined ${chatUser.room}`, chatUser, socket.request.session.guestID)
           socket.join(chatUser.room);
