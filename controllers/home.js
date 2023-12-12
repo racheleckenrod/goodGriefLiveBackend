@@ -62,7 +62,7 @@ module.exports = {
         const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
         const _id = req.user._id
         // console.log(likedPosts, "likedPosts from getWelcome")
-        res.render("welcome.ejs", { posts: posts, comments: comments, user: req.user, _id: _id, likedPosts: likedPosts });
+        res.status(200).json({ posts: posts, comments: comments, user: req.user, userName: req.user.userName, _id: _id, likedPosts: likedPosts });
       }catch (err) {
         console.log(err)
       }
@@ -155,7 +155,7 @@ module.exports = {
     
 
     getPrivacyPolicy: (req, res) => {
-      res.render("privacyPolicy");
+      res.json({ message: "privacyPolicy" });
     },
 
     removeCookies: async (req, res) => {
@@ -170,11 +170,11 @@ module.exports = {
             }
           });
         });
-          res.clearCookie('consentCookie');
-          res.clearCookie('guestID');
-          res.clearCookie('userAgreed');
-          res.clearCookie('connect.sid', { path: '/' }); // Specify the path for session cookie
-          res.redirect("/");
+        res.clearCookie('consentCookie');
+        res.clearCookie('guestID');
+        res.clearCookie('rulesCookie');
+        res.clearCookie('connect.sid', { path: '/' }); // Specify the path for session cookie
+        res.status(200).json({ message: "Cookies successfully removed, have a nice day."});
       } catch (error) {
           console.error('Error destroying session:', error);
 

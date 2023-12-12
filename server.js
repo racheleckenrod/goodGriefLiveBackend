@@ -21,7 +21,12 @@ const cors = require('cors');
 require("dotenv").config({ path: "./config/.env" });
 const PORT = process.env.PORT;
 
-app.use(cors({ credentials: true, origin: 'http://localhost:5173' }));
+app.use(cors({ 
+  credentials: true, 
+  origin: 'http://localhost:5173',
+  methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
+  optionsSuccessStatus: 204,
+ }));
 
 // const moment = require('moment-timezone');
 const mongoose = require("mongoose");
@@ -87,20 +92,23 @@ app.use(cookieParser());
 
 // obtain consent for cookies before setting session cookie and others
 app.use((req, res, next) => {
-  console.log("app.use test at the cookie level")
-  const consentCookie = req.cookies.consentCookie;
-  // console.log(req.path)
+  console.log("app.use test at the cookie level", req.cookies)
+  console.log('Request Headers:', req.headers);
 
-  if (req.path === '/privacyPolicy') {
+  const consentCookie = req.cookies.consentCookie;
+  console.log(req.path)
+
+  if (req.path === '/api/privacyPolicy') {
     // return res.render("privacyPolicy");
     console.log("privacy policy")
     return next();
   }
 
+
   if (!consentCookie) {
     console.log("no consentCookie");
     // res.redirect('X-Redirect', '/');
-    return res.status(401).json({ error: 'You must accept cookies.'});
+    return res.status(401).json({ error: 'You must accept cookies to access this website.'});
   } 
   
   next();
@@ -160,13 +168,13 @@ app.use( async (req, res, next) => {
     }
   }
 
-  console.log("app.use", req.session.status, "req.user=", req.user ? req.user.userName : 'none');
+  console.log("app.use", req.session, req.session.status, "req.user=", req.user ? req.user.userName : 'none');
   next();
 })
 
 // Check for cookie acceptance before wrap middleware
 io.use(async (socket, next) => {
-  // console.log("io.use cookie check", socket.handshake.headers, socket.id)
+  console.log("io.use cookie check", socket.handshake.headers, socket.id)
   // Check for cookie acceptance
   const consentCookie = socket.handshake.headers.cookie
     ? socket.handshake.headers.cookie
@@ -176,6 +184,9 @@ io.use(async (socket, next) => {
 console.log("io consentCookie=", consentCookie)
   if (!consentCookie) {
     // No cookie acceptance, reject the connection
+    console.log("before cookie error")
+    console.log(socket.handshake.headers)
+
     return next(new Error('Cookie acceptance is required.'));
   }
   // Continue with existing logic
@@ -304,9 +315,17 @@ function userJoin(chatusername, username, room, _id, socketID) {
   return chatUser;
 }
 
- 
+io.on('error', (err) => {
+  console.error('Socket.IO initialization error:', err.message);
+});
+
 // run when client connects
 io.on("connection", async ( socket) => {
+
+   // Add an error handler
+   socket.on('error', (err) => {
+    console.error('Socket.IO connection error:', err.message);
+  });
 
   console.log("io connection", socket.id, socket.request.session.status)
     const userTimeZone = socket.request.session.userTimeZone;
@@ -360,8 +379,12 @@ io.on("connection", async ( socket) => {
               socket.emit('timeData', localTime);}, 1000);
               socket.emit("timeClock", `It's about time... ${socket.chatusername}, Connected= ${socket.connected}, socketID: ${socket.id}`)
         });
-      
-        socket.on("joinRoom", ({ username, room, _id}) => {
+
+        socket.on("tester", (arg) => {
+          console.log(arg);
+        });
+        
+        socket.on("joinRoom", ({ username, room, _id}, callback) => {
           console.log("joining room??", username, room, _id)
           const chatUser = userJoin(socket.chatusername, username, room, _id, socket.id);
           console.log(`${socket.chatusername} joined ${chatUser.room}`, chatUser, socket.request.session.guestID)
@@ -372,6 +395,7 @@ io.on("connection", async ( socket) => {
            io.to(chatUser.room).emit("roomUsers", {
             room: chatUser.room,
             chatUsers: getRoomUsers(chatUser.room),
+            
           });
 
            // create email notification
@@ -472,6 +496,7 @@ io.on("connection", async ( socket) => {
          // Welcome current user
         socket.emit("message", formatMessage(botName, `Welcome to the room "${chatUser.room}" of Good Grief Live, ${chatUser.username}.`));
 
+        callback('Event received on the server');
     }); 
 });
 
@@ -482,7 +507,7 @@ app.use("/api/post", postRoutes);
 app.use("/api/comment", commentRoutes);
 app.use("/api/chat/:room", chatRoutes);
 
-app.use("/chat", chatRoutes);
+app.use("/api/chat", chatRoutes);
 
 
 server.listen(PORT, () => { console.log(`Server running on port ${PORT}`)});

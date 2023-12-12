@@ -16,7 +16,7 @@ module.exports = {
       const likedPosts = await Post.find({ user: req.user.id }).sort({likes: "desc"}).lean();
       const _id = req.user._id || 33333333
       // console.log(req.session, req.body.timezone)
-      res.render("profile.ejs", { posts: posts, user: req.user, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
+      res.status(200).json({ posts: posts, user: req.user, userName: req.user.userName, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
     } catch (err) {
       console.log(err);
     }
