@@ -5,6 +5,7 @@ const ChatMessage = require("../models/ChatMessage");
 module.exports = {
 
   getLobby: async (req, res) => {
+    console.log("FROM THE LOBBY")
     try {
       let data;
       if (!req.user) {
@@ -13,14 +14,16 @@ module.exports = {
         const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
         const recentMessages = await ChatMessage.find().sort({ timestamp: -1 }).limit(10).lean();
         data = { posts: posts, comments: comments, userName: req.session.userName, _id: _id, room: "The Lobby", session: req.session, recentMessages: recentMessages };
+        res.status(200).json({ posts: posts, comments: comments, userName: req.session.userName, _id: _id, room: "The Lobby", session: req.session, recentMessages: recentMessages })
       } else {
         const _id = req.user._id
         const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
         const comments = await Comment.find().sort({ createdAt: "asc" }).lean()
         const recentMessages = await ChatMessage.find().sort({ timestamp: -1 }).limit(10).lean();
         data = { posts: posts, comments: comments,  user: req.user, userName: req.user.userName, _id: _id, room: "The Lobby", session: req.session, recentMessages: recentMessages };
+        res.status(200).json( { posts: posts, comments: comments,  user: req.user, userName: req.user.userName, _id: _id, room: "The Lobby", session: req.session, recentMessages: recentMessages })
       }
-      res.json(data);
+      // res.json(data);
       
     } catch (err) {
       console.error(err);
@@ -46,10 +49,15 @@ module.exports = {
 
 
     getRoom: (req, res, next) => {
+
+      console.log("FROM GETROOM:", req.url)
      
       const _id = req.user._id
      
-      res.render("chatRoom.ejs", { user: req.user, _id: _id, room: req.params.room, session: req.session });
+      let data = { user: req.user, userName: req.user.userName, _id: _id, room: req.params.room, session: req.session };
+
+      res.status(200).json(data)
+
       next();
 
     },

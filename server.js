@@ -6,8 +6,9 @@ const app = express();
 const server = http.createServer(app);
 const io = socketio(server, {
   cors: {
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST'],
+    origin: ['http://localhost:5173', 'http://192.168.1.173:5173' ],
+    allowedHeaders: ['consentCookie'],
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true,
   },
   reconnection: true,
@@ -23,7 +24,7 @@ const PORT = process.env.PORT;
 
 app.use(cors({ 
   credentials: true, 
-  origin: 'http://localhost:5173',
+  origin: ['http://localhost:5173', 'http://192.168.1.173:5173'],
   methods: 'GET, HEAD, PUT, PATCH, POST, DELETE',
   optionsSuccessStatus: 204,
  }));
@@ -174,14 +175,17 @@ app.use( async (req, res, next) => {
 
 // Check for cookie acceptance before wrap middleware
 io.use(async (socket, next) => {
-  console.log("io.use cookie check", socket.handshake.headers, socket.id)
+  console.log("io.use cookie check", socket.handshake.headers.cookie, socket.id)
   // Check for cookie acceptance
   const consentCookie = socket.handshake.headers.cookie
     ? socket.handshake.headers.cookie
         .split('; ')
         .find((cookie) => cookie.startsWith('consentCookie='))
     : undefined;
-console.log("io consentCookie=", consentCookie)
+
+  // // for ip address:
+  // const consentCookie = socket.handshake.headers.consentcookie
+console.log("io consentCookie=", consentCookie, socket.handshake.headers.consentcookie)
   if (!consentCookie) {
     // No cookie acceptance, reject the connection
     console.log("before cookie error")
@@ -335,15 +339,15 @@ io.on("connection", async ( socket) => {
     socket.emit('setStatus', socket.request.session.status)
   console.log(socket.chatusername, "connected setStatus sent?", socket.request.session.status, socket.id)
    
-      try {
-        const result = await  Guest.findOneAndUpdate( 
-          { guestUserID: guestID },
-          { $set: { timezone: userTimeZone }},
-          { new: true },
-        );
-      } catch (err) {
-         console.error(err);
-      }
+      // try {
+      //   const result = await  Guest.findOneAndUpdate( 
+      //     { guestUserID: guestID },
+      //     { $set: { timezone: userTimeZone }},
+      //     { new: true },
+      //   );
+      // } catch (err) {
+      //    console.error(err);
+      // }
 
     
         // Runs when client disconnects

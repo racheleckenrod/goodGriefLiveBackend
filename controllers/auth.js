@@ -171,21 +171,29 @@ exports.postLogin = async (req, res, next) => {
         console.log("all user data is not available, skipping update.")
       }
       
-     
+      console.log("FROM LOGIN", req.session)
 
-      res.redirect("/chat")
-      // setTimeout(() => {
-      //    res.redirect("/chat");
-      // }, 2000);
-     
+
+      res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        session: req.session,
+        user: req.user,
+      })
+
+
         });
   })(req, res, next);
 };
 
 
 exports.getPasswordResetRequest = (req, res) => {
-  res.render("passwordResetRequest", { title: "Password Reset Request" });
-};
+  res.status(200).json({  
+    success: "Working out all the kinks...",
+    session: req.session,
+    userName: req.session.userName,
+  });
+}
 
 
 
@@ -195,87 +203,83 @@ exports.postPasswordResetRequest = async (req, res) => {
   if (!validator.isEmail(req.body.email))
     validationErrors.push({ msg: "Please enter a valid email address." });
   if (validator.isEmpty(req.body.email))
-    validationErrors.push({ msg: "Password cannot be blank." });
+    validationErrors.push({ msg: "Email cannot be blank." });
 
   if (validationErrors.length) {
     req.flash("errors", validationErrors);
-    return res.redirect("/passwordResetRequest");
+    return res.status(500).json({ error: validationErrors[0] });
   }
   req.body.email = validator.normalizeEmail(req.body.email, {
     gmail_remove_dots: false,
   });
   try {
-      // check if it is an email
-      const { email } = req.body;
-      if (!email) {
-          req.flash('errors', 'Email is definitely required.');
-          return res.redirect('/passwordResetRequest');
-      }
+    // check if it is an email
+    const { email } = req.body;
+    if (!email) {
+      req.flash('errors', 'Email is definitely required.');
+      return res.status(502).json({ message: "no email"})
+    }
 
-      // check if the email is a user in the database
-      const user = await User.findOne({ email });
+    // check if the email is a user in the database
+    const user = await User.findOne({ email });
 
-      if (!user) {
-          req.flash('errors', 'No such User found with that email address.');
-          return res.redirect('/passwordResetRequest');
-      }
+    if (!user) {
+      req.flash('errors', 'No such User found with that email address.');
+      return res.status(404).json({ message: "No such user found with that email address."})
+    }
 
-      // generate unique reset token with expiration
-      crypto.randomBytes(20, (err, buffer) => {
+    // generate unique reset token with expiration
+    const token = crypto.randomBytes(20).toString('hex');
 
-          if (err) {
-              req.flash("errors", "Error generating reset token.");
-              return res.redirect("/passwordResetRequest");
-          }
+    user.resetPasswordToken = token;
+    user.resetPasswordExpires = Date.now() + 3600000; //token expires in one hour
 
-            const token = buffer.toString('hex');
+        
+    // save user with the token and send email    
+    await user.save();
+    console.log("saving USER", user.resetPasswordToken)
+          
 
-            user.resetPasswordToken = token;
-            user.resetPasswordExpires = Date.now() + 3600000; //token expires in one hour
-
-              // save user with the token and send email
-              user.save((err) => {
-                  if (err) {
-                      req.flash("errors", "Error saving reset token.");
-                      return res.redirect("/passwordResetRequest");
-                  }
-                  // send an email to the user with a link containing the token
-                  const resetLink = `https://www.good-grief-live.com/passwordReset/${token}`;
+    // send an email to the user with a link containing the token
+    const resetLink = `http://localhost:5173/passwordReset/${token}`;
+              
 
                 
 
-                  // send the reset link in the email
-                  const mailOptions = {
-                    from: process.env.EMAIL_USER,
-                    to: email,
-                    subject: "Password Reset Request",
-                    text: `Hello ${user.userName}, \n\nWe are glad to have you in our community. You can click on the following link to reset your password: ${resetLink}. \nIt's valid for one hour. \n\nPlease let us know if you have any other trouble by sending us an email, or submitting the form at the bottom of the website. We hope you are finding support and enjoy connecting with others. \nThank you and talk to you soon!  \n\n Good Grief Live`,
-                  };
+    // send the reset link in the email
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: "Password Reset Request",
+      text: `Hello ${user.userName}, \n\nWe are glad to have you in our community. You can click on the following link to reset your password: ${resetLink}. \nIt's valid for one hour. \n\nPlease let us know if you have any other trouble by sending us an email, or submitting the form at the bottom of the website. We hope you are finding support and enjoy connecting with others. \nThank you and talk to you soon!  \n\n Good Grief Live`,
+    };
 
                   
-                  transporter.sendMail(mailOptions, (emailError) => {
-                    if (emailError) {
-                      console.error("Error sending password reset email", emailError);
-                      req.flash('errors', 'Error sending password reset email.');
-                      return res.redirect('/passwordResetRequest');
-                    }
+    transporter.sendMail(mailOptions, (emailError) => {
+      if (emailError) {
+        console.error("Error sending password reset email", emailError);
+        req.flash('errors', 'Error sending password reset email.');
+        return res.staus(500).json({message: 'Error sending password reset email.' });
+      } else {
 
-                    // Email sent successfully
-                    console.log("Password reset email sent.")
-                    
-                    // redirect to confimation page
-                    // req.flash("success", { msg: "Success! You are logged in." });
-                    req.flash('success', { msg: 'Password reset request was successful! Please check your email for further instructions.' });
-                    res.redirect("/passwordResetRequest");
-                  });
-              });
-          });
+        // Email sent successfully
+        console.log("Password reset email sent.")
+        
+        // redirect to confimation page
+        // req.flash("success", { msg: "Success! You are logged in." });
+        req.flash('success', { msg: 'Password reset request was successful! Please check your email for further instructions.' });
 
+        // res.json({ success: true, message: 'Password reset request was successful! Please check your email for further instructions.'})
+        res.status(200).json({
+          success: "Password reset email sent successful!" 
+        });     
+      }  
+    });     
   } catch (error) {
-      // handle unexpected errors
-      console.error(error);
-      req.flash("errors", "An unexpected error occurred.");
-      res.redirect("/passwordResetRequest");
+    // handle unexpected errors
+    console.error(error);
+    req.flash("errors", "An unexpected error occurred.");
+    res.status(500).json({ error: 'An unauthorized error occurred.'});
   }
 };
 
@@ -284,32 +288,41 @@ exports.getPasswordReset = async (req, res) => {
   try {
     // Extract token from URL
     const resetToken = req.params.token;
-
+    if(typeof resetToken === 'string') console.log("STRINGGG") 
+    if(typeof resetToken === 'number') console.log("NUMBERRRR")
+    console.log("RESET TOKEN=",resetToken)
     // Query database to find user with that token
     const user = await User.findOne({
       resetPasswordToken: resetToken,
-      resetPasswordExpires: { $gt: Date.now() },
+      // resetPasswordExpires: { $gt: Date.now() },
       
+    }).catch((error) => {
+      console.error('%^%^%^%^%^%^%%^%%^%^%^%^%error querying the database:', error);
+      return res.status(500).json({ error: 'Internal server error in the database' });
+
     });
+    console.log("TEMPORARY")
 
       console.log("user=", user)
 
     if (!user) {
       // if no token or it is expired
       req.flash('errors', 'Invalid or expired password reset link.');
-      return res.redirect('/passwordResetRequest');
+      return res.status(404).json({ error: "no user"})
     }
 
     // render reset page with user data
-    res.render("passwordReset", {
+    res.status(200).json({
       user: user,
       title: "Password Reset",
+      email: user.email,
+      userName: user.userName
      });
 
   } catch (error) {
     console.error(error);
     req.flash('errors', 'An unexpected error occurred.');
-    res.redirect('/passwordResetRequest');
+    res.status(500).json({message: "errors"})
   }
   
 };
@@ -384,15 +397,30 @@ exports.postFeedback = (req, res, next) => {
 
 };
 
+// exports.logout = (req, res) => {
+//   const username = "unknown" || req.user.userName
+//   req.logout(() => {
+//     console.log(`User ${username} has logged out.`)
+//   })
+//   req.session.destroy((err) => {
+//     if (err)
+//       console.log("Error : Failed to destroy the session during logout.", err);
+//     req.user = null;
+//     res.status(500).json({});
+//   });
+// };
+
+
 exports.logout = (req, res) => {
-  const username = "unknown" || req.user.userName
+  const username = req.user ? req.user.userName : (req.guestUser ? req.guestUser.userName : "unknown");
   req.logout(() => {
     console.log(`User ${username} has logged out.`)
   })
   req.session.destroy((err) => {
-    if (err)
+    if (err){
       console.log("Error : Failed to destroy the session during logout.", err);
+    }
     req.user = null;
-    res.redirect("/");
+    res.status(200).json({ message: "logout successful" });
   });
 };
