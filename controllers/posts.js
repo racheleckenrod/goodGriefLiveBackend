@@ -103,28 +103,7 @@ module.exports = {
         user = await User.findOneAndUpdate(req.params.id, data, {
           new: true
         });
-        // console.log("after user", user, user.profilePicture)
-        // res.json(user);
-      
-        // Upload image to cloudinary
-        // const result = await cloudinary.uploader.upload(req.file.path);
-        // console.log(result)
-
-         //   // Upload image to cloudinary
-        // const { result } = await cloudinary.uploader.upload(req.file.path);
-        // console.log(result, req.user.profilePicture )
-        // req.user.profilePicture = result.secure_url
-        // console.log(req.user.profilePicture)
-      // // }
-
-      // await User.findOneAndUpdate(
-      //   { _id: req.params.id },
-      //   {  profilePicture: result.secure_url} ,
-     
-         
-      
-      // );
-      // console.log("Updated createProfile User", req.user.profilePicture );
+    
       res.redirect(`/profile`);
     } catch (err) {
       console.log(err);
@@ -156,28 +135,36 @@ module.exports = {
     const userLang = req.session.userLang || req.user.userLang;
     console.log("also getFeed", userTimeZone, userLang, req.user.timezone, req.user.userLang, req.session.userTimeZone)
     try {
-      const posts = await Post.find().populate('user').sort({ createdAt: "desc" }).lean();
-      const comments = await Comment.find().populate('user').sort({ createdAt: "asc" }).lean()
-      // console.log(posts,comments, "from getFeed")
-      const _id = req.user._id
+      let data;
+     
+        const _id = req.user._id
+        const posts = await Post.find().populate('user').sort({ createdAt: "desc" }).lean();
+        const comments = await Comment.find().populate('user').sort({ createdAt: "asc" }).lean()
 
-      res.render("feed.ejs", { posts: posts, comments: comments, user: req.user, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
-      // console.log(comments, posts, "toooo much")
-    } catch (err) { 
-      console.log(err);
+        data = { posts: posts, comments: comments, userTimeZone: userTimeZone, userLang: userLang, user: req.user, userName: req.user.userName, _id: _id, session: req.session };
+      
+      console.log(data, "DATA FROM FEED")
+      res.json(data);
+      
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   },
+
  
   getPost: async (req, res) => {
     const userTimeZone = req.user.timezone || req.session.userTimeZone;
     const userLang = req.user.userLang || req.session.userLang;
+    let data;
     console.log("also getPost", userTimeZone, userLang)
     try {
       const post = await Post.findById(req.params.id).populate('user');
       const comments = await Comment.find({post: req.params.id}).populate('user').sort({ createdAt: "desc" }).lean();
       const _id = req.user._id
       // console.log(post,comments, "from getPost")
-      res.render("post.ejs", { post: post, user: req.user, comments: comments, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
+      data =  { post: post, user: req.user, comments: comments, _id: _id, userTimeZone: userTimeZone, userLang: userLang }
+      res.json(data);
     } catch (err) {
       console.log(err);
     }
