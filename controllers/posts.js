@@ -170,10 +170,12 @@ module.exports = {
     }
   },
   getNewPost:  async (req, res) => {
+    let data;
     try {
       const posts = await Post.find({ user: req.user.id });
       const _id = req.user._id
-      res.render("newPost.ejs", { posts: posts, user: req.user, _id: _id });
+      data = { posts: posts, user: req.user, _id: _id };
+      res.json(data)
     } catch (err) {
       console.log(err);
     }
@@ -193,10 +195,10 @@ module.exports = {
         user: req.user.id,
       });
       console.log("Post has been added!");
-      res.redirect(`/feed`);
+      res.status(200).json({ message: 'Post successfully added'})
     } catch (err) {
       console.log(err);
-      res.redirect(`/post/newPost/:id`)
+      res.status(500).json({ message: 'error adding post' })
     }
   },
   likePost: async (req, res) => {
