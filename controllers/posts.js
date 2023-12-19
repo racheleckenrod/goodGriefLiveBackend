@@ -203,17 +203,20 @@ module.exports = {
   },
   likePost: async (req, res) => {
     try {
-      await Post.findOneAndUpdate(
+      const updatedPost = await Post.findOneAndUpdate(
         { _id: req.params.id },
         {
           $inc: { likes: 1 },
-        }
+        },
+        { new: true }
       );
       console.log("Likes +1");
      
-      res.redirect(`/post/${req.params.id}`);
+      // res.redirect(`/post/${req.params.id}`);
+      res.status(200).json({ post: updatedPost})
     } catch (err) {
       console.log(err);
+      res.status(500).json({ error: 'Internal Server Error' });
     }
   },
   likePostFeed: async (req, res) => {

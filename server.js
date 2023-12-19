@@ -94,7 +94,7 @@ app.use(cookieParser());
 // obtain consent for cookies before setting session cookie and others
 app.use((req, res, next) => {
   console.log("app.use test at the cookie level", req.cookies)
-  console.log('Request Headers:', req.headers);
+  // console.log('Request Headers:', req.headers);
 
   const consentCookie = req.cookies.consentCookie;
   console.log(req.path)

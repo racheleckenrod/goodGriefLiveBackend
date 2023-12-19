@@ -36,6 +36,7 @@ module.exports = {
     getIndex: async (req, res) => {
       try {
         let data;
+        // let userName;
         if (!req.user) {
           const _id = req.session._id
           const posts = await Post.find().populate('user').sort({ likes: "desc" }).lean();
