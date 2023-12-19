@@ -113,6 +113,7 @@ module.exports = {
     const userTimeZone = req.user.timezone || req.session.userTimeZone;
     const userLang = req.user.userLang || req.session.userLang;
     console.log("showprofile", req.params, userTimeZone, userLang)
+    let data;
     try {
       // const { id } = req.params.id
       const chatUser = await User.findOne( { _id: req.params.id } )
@@ -123,7 +124,8 @@ module.exports = {
       const _id = req.user._id
       const comments = await Comment.find().populate('user').sort({ createdAt: "asc" }).lean()
       // console.log(likedPosts.length, comments.length, "length of likedPost and comments")
-      res.render("userProfile.ejs", { posts: posts, user: req.user, chatUser: chatUser, comments: comments, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
+      data = { posts: posts, user: req.user, chatUser: chatUser, comments: comments, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang };
+      res.status(200).json(data)
     } catch (err) {
       console.log(err, "STOP!!");
     }
@@ -143,7 +145,7 @@ module.exports = {
 
         data = { posts: posts, comments: comments, userTimeZone: userTimeZone, userLang: userLang, user: req.user, userName: req.user.userName, _id: _id, session: req.session };
       
-      console.log(data, "DATA FROM FEED")
+      console.log("DATA FROM FEED")
       res.json(data);
       
     } catch (err) {
