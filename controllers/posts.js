@@ -124,7 +124,7 @@ module.exports = {
       const _id = req.user._id
       const comments = await Comment.find().populate('user').sort({ createdAt: "asc" }).lean()
       // console.log(likedPosts.length, comments.length, "length of likedPost and comments")
-      data = { posts: posts, user: req.user, chatUser: chatUser, comments: comments, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang };
+      data = { posts: posts, userName: req.user.userName, user: req.user, chatUser: chatUser, comments: comments, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang };
       res.status(200).json(data)
     } catch (err) {
       console.log(err, "STOP!!");
@@ -242,13 +242,14 @@ module.exports = {
     }
   },
   editPostPage:  async (req, res) => {
+    console.log(req.params.id, "from EditPostPage")
     const userTimeZone = req.user.timezone || req.session.userTimeZone;
     const userLang = req.user.userLang || req.session.userLang;
     try {
       const post = await Post.findById(req.params.id).populate('user');
       const comments = await Comment.find({post: req.params.id}).sort({ createdAt: "desc" }).lean();
       const _id = req.user._id
-      res.render("edit.ejs", { post: post, user: req.user, comments: comments, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
+      res.json({ post: post, user: req.user, comments: comments, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
     } catch (err) {
       console.log(err)
     }
@@ -265,7 +266,7 @@ module.exports = {
       
       );
       // console.log("Updated Post",req.body.title );
-      res.redirect(`/post/${req.params.id}`);
+      res.json({ message: "post edited"})
     } catch (err) {
       console.log(err);
     }

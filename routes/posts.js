@@ -15,7 +15,7 @@ router.put("/likePost/:id", postsController.likePost);
 
 router.put("/likePostFeed/:id", postsController.likePostFeed);
 
-router.get("/editPostPage/:id", postsController.editPostPage);
+router.get("/editPost/:id", postsController.editPostPage);
 
 router.put("/editPost/:id", postsController.editPost)
 
