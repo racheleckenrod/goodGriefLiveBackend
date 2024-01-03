@@ -80,13 +80,14 @@ module.exports = {
           msg: "Please enter a name.",
         });
 
-        req.session.returnTo = req.headers.referer || '/';
+        // req.session.returnTo = req.headers.referer || '/';
     
       if (validationErrors.length) {
-        req.flash("errors", validationErrors);
+        // req.flash("errors", validationErrors);
 
-        const redirectURL = req.session.returnTo || '/';
-        return res.redirect(`${redirectURL}#footer`);
+        // const redirectURL = req.session.returnTo || '/';
+        // return res.redirect(`${redirectURL}#footer`);
+        return res.status(400).json({ errors: validationErrors });
       }
     
       req.body.email = validator.normalizeEmail(req.body.email, {
@@ -131,23 +132,26 @@ module.exports = {
         }
     
         console.log("Feedback has been added!");
-        req.flash("info", {
-          msg: `Your message was sent. Thank you, ${
-            req.user ? req.user.userName : req.body.inputName
-          }, for your feedback!`,
-        });
+        // req.flash("info", {
+        //   msg: `Your message was sent. Thank you, ${
+        //     req.user ? req.user.userName : req.body.inputName
+        //   }, for your feedback!`,
+        // });
         try {
           const recipients = ['backintobalance@gmail.com', 'rachel@racheleckenrod.com', 'goodgrieflive@gmail.com'];
           await sendEmailNotification(feedback, recipients);
 
+          return res.status(200).json({ success: true, message: `Your message was sent. Thank you, ${
+            req.user ? req.user.userName : req.body.inputName
+          }, for your feedback!` });
         } catch (err) {
           console.error(err, 'from home controller postfeedback multiple emails');
-          return next(err);
+          return res.status(500).json({ error: "Internal Server Error" });
         }
 
-        const redirectURL = req.session.returnTo || '/';
-        delete req.session.returnTo;
-        return res.redirect(`${redirectURL}#footer`);
+        // const redirectURL = req.session.returnTo || '/';
+        // delete req.session.returnTo;
+        // return res.redirect(`${redirectURL}#footer`);
       } catch (err) {
         console.error(err, "from home controller postFeedback");
         return next(err);

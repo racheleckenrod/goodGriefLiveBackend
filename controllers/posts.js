@@ -29,7 +29,7 @@ module.exports = {
       const likedPosts = await Post.find({ user: req.user.id }).sort({likes: "desc"}).lean();
       const _id = req.user._id
       // console.log(req.user)
-      res.render("editProfile.ejs", { posts: posts, user: req.user, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
+      res.json({ posts: posts, user: req.user, likedPosts: likedPosts, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
     } catch (err) {
       console.log(err);
     }
@@ -236,7 +236,7 @@ module.exports = {
       const comments = await Comment.find().populate('user').sort({ createdAt: "asc" }).lean()
       // console.log(posts,comments, "from getFeed")
       const _id = req.user._id
-      res.render("feed.ejs", { posts: posts, comments: comments, user: req.user, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
+      res.json({ posts: posts, comments: comments, user: req.user, _id: _id, userTimeZone: userTimeZone, userLang: userLang });
     } catch (err) {
       console.log(err);
     }

@@ -11,7 +11,7 @@ module.exports = {
         user: req.user.id,
       });
       await newComment.save();
-      console.log("Comment has been added!");
+      console.log("Comment has been added!", newComment);
       const populatedComment = await newComment.populate('user');
       res.status(201).json({ comment: populatedComment })
     } catch (err) {

@@ -27,7 +27,7 @@ exports.getSignup = (req, res) => {
   });
 };
 
-exports.postSignup = (req, res, next) => {
+exports.postSignup = async (req, res, next) => {
   console.log("calling exports.postSignup")
   const validationErrors = [];
   
@@ -42,63 +42,64 @@ exports.postSignup = (req, res, next) => {
 
   if (validationErrors.length) {
     req.flash("errors", validationErrors);
-    return res.redirect("../signup");
+    return res.json({ message: validationErrors });
   }
   req.body.email = validator.normalizeEmail(req.body.email, {
     gmail_remove_dots: false,
   });
 
-  const user = new User({
-    userName: req.body.userName,
-    email: req.body.email,
-    password: req.body.password,
-    timezone: req.session.userTimeZone,
-    userLang: req.session.userLang,
-    guestIDs: [req.session.guestID],
-  });
+  console.log("trying newUser")
+  try {
+    const existingUser = await User.findOne(
+      { $or: [{ email: req.body.email }, { userName: req.body.userName }], }).exec();
+      
+    if (existingUser) {
+      req.flash("errors", {
+        msg: "Account with that email address or username already exists.",
+      });
+      return res.json({ message: "error- exsiting user" });
+    }
 
-  User.findOne(
-    { $or: [{ email: req.body.email }, { userName: req.body.userName }] },
-    (err, existingUser) => {
+    const user = new User({
+      userName: req.body.userName,
+      email: req.body.email,
+      password: req.body.password,
+      timezone: req.session.userTimeZone,
+      userLang: req.session.userLang,
+      guestIDs: [req.session.guestID],
+    });
+
+    console.log("trying after user")
+
+    await user.save();
+      
+    req.logIn(user, (err) => {
       if (err) {
         return next(err);
       }
-      if (existingUser) {
-        req.flash("errors", {
-          msg: "Account with that email address or username already exists.",
-        });
-        return res.redirect("../signup");
-      }
-      user.save((err) => {
-        if (err) {
-          return next(err);
+
+      // Send an email notification to yourself
+      const emailOptions = {
+        from: process.env.EMAIL_USER,
+        to: ['rachel@racheleckenrod.com', 'backintobalance@gmail.com', 'goodgrieflive@gmail.com'], 
+        subject: 'A New User Signed Up for Good Greif Live',
+        text: `A new user has signed up:\n\nUsername: ${user.userName}\nEmail: ${user.email}`,
+      };
+
+      transporter.sendMail(emailOptions, (error) => {
+        if (error) {
+          console.error('Error sending new user notification email:', error);
+        } else {
+          console.log('New user notification email sent successfully.');
         }
-        req.logIn(user, (err) => {
-          if (err) {
-            return next(err);
-          }
-
-                    // Send an email notification to yourself
-            const emailOptions = {
-              from: process.env.EMAIL_USER,
-              to: ['rachel@racheleckenrod.com', 'backintobalance@gmail.com', 'goodgrieflive@gmail.com'], 
-              subject: 'A New User Signed Up for Good Greif Live',
-              text: `A new user has signed up:\n\nUsername: ${user.userName}\nEmail: ${user.email}`,
-            };
-
-            transporter.sendMail(emailOptions, (error) => {
-              if (error) {
-                console.error('Error sending new user notification email:', error);
-              } else {
-                console.log('New user notification email sent successfully.');
-              }
-            });
-
-            res.redirect("/welcome");
-        });
       });
-    }
-  );
+        console.log("siging up")
+        res.json({ message: "login successful."});
+    });
+    
+  } catch (error) {
+    return next(error);
+  } 
 };
 
 
